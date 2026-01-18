@@ -452,8 +452,40 @@ function setupAdminListeners(code) {
 
     onValue(ref(db, `rooms/${code}/users`), (snapshot) => {
         const users = snapshot.val();
-        if (users) renderAdminTeams(users);
+        if (users) {
+            renderAdminTeams(users);
+            renderHostSquad(users); // NEW: Update Host's personal squad view
+        }
     });
+}
+
+function renderHostSquad(users) {
+    const currentUser = auth.currentUser;
+    if(!currentUser) return;
+    
+    // Find Host Data
+    const hostData = users[currentUser.uid];
+    if(hostData) {
+        if(getEl('host-max-squad')) getEl('host-max-squad').textContent = maxSquad;
+        if(getEl('host-squad-size')) {
+            const size = hostData.team ? hostData.team.length : 0;
+            getEl('host-squad-size').textContent = size;
+        }
+
+        const list = getEl('host-squad-list');
+        if(list) {
+            list.innerHTML = '';
+            if (hostData.team) {
+                hostData.team.forEach(p => {
+                    const li = document.createElement('li');
+                    li.textContent = `${p.name} (${formatMoney(p.price)})`;
+                    li.style.borderBottom = '1px solid #333';
+                    li.style.padding = '5px 0';
+                    list.appendChild(li);
+                });
+            }
+        }
+    }
 }
 
 function setupUserListeners(code) {
