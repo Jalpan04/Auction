@@ -33,9 +33,49 @@ window.addEventListener('click', (e) => {
     // Host Betting
     if (id === 'btn-host-bid-1') { log("Click: Host Bid 1"); placeBid(1); }
 
+    // Admin Export
+    if (id === 'btn-export') exportToCSV();
+
     // User
     if (id === 'btn-bid-1') placeBid(1);
 });
+
+async function exportToCSV() {
+    try {
+        const snap = await get(ref(db, `rooms/${currentRoomCode}/users`));
+        if (!snap.exists()) return alert("No data to export.");
+
+        const users = snap.val();
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Owner Name,Player Name,Price (Pts)\n";
+
+        Object.values(users).forEach(u => {
+            if (u.team && u.team.length > 0) {
+                u.team.forEach(p => {
+                     // Escape commas in names if any
+                    const safeOwner = u.username.replace(/,/g, '');
+                    const safePlayer = p.name.replace(/,/g, '');
+                    csvContent += `${safeOwner},${safePlayer},${p.price}\n`;
+                });
+            } else {
+                 const safeOwner = u.username.replace(/,/g, '');
+                 csvContent += `${safeOwner},No Players,0\n`;
+            }
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `auction_results_${currentRoomCode}.csv`);
+        document.body.appendChild(link); // Required for FF
+        link.click();
+        document.body.removeChild(link);
+
+    } catch (e) {
+        console.error("Export failed", e);
+        alert("Export failed: " + e.message);
+    }
+}
 
 // Load History on Lobby Show
 // We can't export this easily to app.js without circular dep on showLobby.
