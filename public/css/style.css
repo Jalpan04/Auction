@@ -24,6 +24,8 @@ body {
     line-height: 1.6;
     height: 100vh;
     overflow-x: hidden;
+    user-select: auto;
+    -webkit-user-select: auto; /* Ensure Safari/Mobile allows selection */
 }
 
 /* Typography */

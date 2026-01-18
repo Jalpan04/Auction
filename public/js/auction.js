@@ -560,13 +560,19 @@ function renderLeaderboard(users) {
     sorted.forEach(u => {
         const d = document.createElement('div');
         d.className = 'lb-item';
-        d.style.display = 'flex';
-        d.style.justifyContent = 'space-between';
-        d.style.marginBottom = '5px';
-        d.style.fontSize = '0.9rem';
+        d.style.marginBottom = '10px';
+        d.style.padding = '10px';
+        d.style.background = 'rgba(255,255,255,0.05)';
+        d.style.borderRadius = '8px';
+        
+        const playerNames = u.team ? u.team.map(p => `<div style="font-size:0.8rem; color:#aaa; margin-left:10px;">• ${p.name} (${formatMoney(p.price)})</div>`).join('') : '';
+
         d.innerHTML = `
-            <span>${u.username}</span>
-            <span class="accent">${u.team ? u.team.length : 0}/${maxSquad}</span>
+            <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:5px;">
+                <span>${u.username}</span>
+                <span class="accent">${u.team ? u.team.length : 0}/${maxSquad}</span>
+            </div>
+            <div>${playerNames}</div>
         `;
         div.appendChild(d);
     });
