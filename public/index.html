@@ -115,7 +115,7 @@
         <!-- Admin View -->
         <section id="admin-view" class="view hidden">
             <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                <h2>ADMIN PANEL | ROOM: <span id="admin-room-code" class="accent mono"></span></h2>
+                <h2>AUCTION ROOM <span class="accent" style="font-size:0.8em">(HOST)</span> | <span id="admin-room-code" class="mono"></span></h2>
                 <button class="btn-quit btn" style="font-size: 0.8rem;">Exit</button>
             </header>
             
@@ -155,7 +155,7 @@
 
                     <!-- Auction Control Phase -->
                     <div id="admin-controls" class="hidden">
-                        <div class="player-card" style="background: var(--card-bg); padding: 40px; text-align: center; border: 1px solid var(--accent-color); margin-bottom: 20px;">
+                        <div class="player-card" style="background: var(--card-bg); padding: 40px; text-align: center; border: 1px solid var(--card-border); margin-bottom: 20px;">
                             <h4 style="color: var(--text-secondary); letter-spacing: 2px;">CURRENT PLAYER</h4>
                             <h1 id="current-player-name" style="font-size: 3rem; margin: 20px 0;">WAITING...</h1>
                             <div class="bid-info" style="font-size: 1.5rem;">
@@ -174,7 +174,7 @@
                         <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 20px;">
                             <h4 style="color: var(--text-secondary); margin-bottom: 10px;">HOST BETTING (AUDITOR)</h4>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                <button id="btn-host-bid-1" class="btn" style="border-color: #f39c12; color: #f39c12; grid-column: span 2;">+1 Point (Host)</button>
+                                <button id="btn-host-bid-1" class="btn" style="grid-column: span 2;">+1 Point (Host)</button>
                             </div>
                         </div>
                     </div>
@@ -182,7 +182,7 @@
 
                 <aside>
                     <div class="card" style="background: var(--card-bg); padding: 20px; height: 100%;">
-                        <h3>TEAMS</h3>
+                        <h3>SQUADS</h3>
                         <div id="admin-teams-list">
                             <!-- Team stats will go here -->
                         </div>
