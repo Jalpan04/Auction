@@ -50,16 +50,19 @@ async function exportToCSV() {
         csvContent += "Owner Name,Player Name,Price (Pts)\n";
 
         Object.values(users).forEach(u => {
+            const safeOwner = u.username.replace(/,/g, '');
+            
             if (u.team && u.team.length > 0) {
-                u.team.forEach(p => {
-                     // Escape commas in names if any
-                    const safeOwner = u.username.replace(/,/g, '');
+                u.team.forEach((p, index) => {
+                    // Visual Grouping: Only show owner name on the first row
+                    const ownerDisplay = index === 0 ? safeOwner : ""; 
                     const safePlayer = p.name.replace(/,/g, '');
-                    csvContent += `${safeOwner},${safePlayer},${p.price}\n`;
+                    csvContent += `${ownerDisplay},${safePlayer},${p.price}\n`;
                 });
+                // Gap between teams (Owners)
+                csvContent += ",,\n";
             } else {
-                 const safeOwner = u.username.replace(/,/g, '');
-                 csvContent += `${safeOwner},No Players,0\n`;
+                 csvContent += `${safeOwner},No Players,0\n,,\n`;
             }
         });
 
