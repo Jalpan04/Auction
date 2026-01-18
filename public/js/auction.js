@@ -32,11 +32,9 @@ window.addEventListener('click', (e) => {
     
     // Host Betting
     if (id === 'btn-host-bid-1') { log("Click: Host Bid 1"); placeBid(1); }
-    if (id === 'btn-host-bid-2') { log("Click: Host Bid 2"); placeBid(2); }
 
     // User
     if (id === 'btn-bid-1') placeBid(1);
-    if (id === 'btn-bid-2') placeBid(2);
 });
 
 // Load History on Lobby Show
@@ -106,7 +104,7 @@ async function hostAuction() {
         // Add Host as "Auditor" user so they can place bids
         await set(ref(db, `rooms/${code}/users/${user.uid}`), {
             username: "Host (Auditor)",
-            balance: 10000, // High balance for Auditor
+            balance: totalPurse, // Set to default purse (50) initially
             team: [],
             isHost: true
         });
@@ -296,16 +294,11 @@ async function spinWheel() {
 
     const randomPlayer = unsold[Math.floor(Math.random() * unsold.length)];
 
-    // Base Price is 1 Point
+    // Base Price is 0 Points (User Request)
     await update(ref(db, `rooms/${currentRoomCode}/current_player`), {
         name: randomPlayer.name,
-        basePrice: 1, 
-        currentBid: 0, // Starts at 0, first bid makes it 1 ?? Or starts at 1? Prompt says "Base price of 1 point".
-        // Usually in auctions, it starts at base. So first bid is at least base. 
-        // Let's set currentBid to 0, so first button click sets it to 1.
-        // OR set it to 1, and first bidder takes it at 1. 
-        // Let's go with: Display 1. First bid is 1. If someone bids +1, it becomes 2.
-        currentBid: 1, 
+        basePrice: 0, 
+        currentBid: 0, 
         highestBidderUID: null,
         highestBidderName: null
     });
@@ -523,12 +516,20 @@ function renderAdminTeams(users) {
     list.innerHTML = '';
     Object.values(users).forEach(u => {
         const div = document.createElement('div');
-        div.style.marginBottom = '10px';
+        div.style.marginBottom = '15px';
         div.style.padding = '10px';
         div.style.background = 'rgba(255,255,255,0.05)';
+        div.style.borderRadius = '8px';
+        
         const teamSize = u.team ? u.team.length : 0;
+        const playerNames = u.team ? u.team.map(p => `<div style="font-size:0.85rem; color:#aaa; margin-left:10px;">• ${p.name} (${formatMoney(p.price)})</div>`).join('') : '<div style="font-size:0.8rem; color:#666; margin-left:10px;">No players</div>';
+
         div.innerHTML = `
-            <strong>${u.username}</strong>: ${teamSize}/${maxSquad} players | Bal: ${formatMoney(u.balance)}
+            <div style="margin-bottom:5px;">
+                <strong style="color:var(--accent-color);">${u.username}</strong>
+                <div style="font-size:0.8rem;">${teamSize}/${maxSquad} | Bal: ${formatMoney(u.balance)}</div>
+            </div>
+            <div>${playerNames}</div>
         `;
         list.appendChild(div);
     });
