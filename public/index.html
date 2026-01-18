@@ -116,7 +116,12 @@
         <section id="admin-view" class="view hidden">
             <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                 <h2>AUCTION ROOM <span class="accent" style="font-size:0.8em">(HOST)</span> | <span id="admin-room-codes-header" class="hidden"><span id="admin-room-code" class="mono"></span></span></h2>
-                <button class="btn-quit btn" style="font-size: 0.8rem;">Exit</button>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button id="btn-export" class="btn" style="padding: 8px; display:flex; align-items:center; justify-content:center; border-color:var(--accent-color);" title="Download CSV">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M216,152v56a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V152a8,8,0,0,1,16,0v56H200V152a8,8,0,0,1,16,0ZM125.66,133.66l-48-48a8,8,0,0,1,11.32-11.32L120,105.69V32a8,8,0,0,1,16,0v73.69l31.02-31.03a8,8,0,1,1,11.32,11.32l-48,48A8,8,0,0,1,125.66,133.66Z"></path></svg>
+                    </button>
+                    <button class="btn-quit btn" style="font-size: 0.8rem;">Exit</button>
+                </div>
             </header>
             
             <div class="grid" style="grid-template-columns: 1fr 300px; gap: 30px;">
@@ -173,9 +178,8 @@
                         
                         <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 20px;">
                             <h4 style="color: var(--text-secondary); margin-bottom: 10px;">HOST BETTING (AUDITOR)</h4>
-                            <div style="display: grid; grid-template-columns: 1fr 60px; gap: 10px;">
-                                <button id="btn-host-bid-1" class="btn">+1 Point (Host)</button>
-                                <button id="btn-export" class="btn" style="padding:0; font-size:1.5rem; display:flex; align-items:center; justify-content:center;" title="Download CSV">📥</button>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <button id="btn-host-bid-1" class="btn" style="grid-column: span 2;">+1 Point (Host)</button>
                             </div>
                         </div>
                     </div>
@@ -251,10 +255,10 @@
     </div>
 
     <!-- Scripts -->
-    <script type="module" src="js/firebase-config.js?v=14-ICON"></script>
-    <script type="module" src="js/utils.js?v=14-ICON"></script>
-    <script type="module" src="js/auth.js?v=14-ICON"></script>
-    <script type="module" src="js/auction.js?v=14-ICON"></script>
-    <script type="module" src="js/app.js?v=14-ICON"></script>
+    <script type="module" src="js/firebase-config.js?v=15-HEADER-EXPORT"></script>
+    <script type="module" src="js/utils.js?v=15-HEADER-EXPORT"></script>
+    <script type="module" src="js/auth.js?v=15-HEADER-EXPORT"></script>
+    <script type="module" src="js/auction.js?v=15-HEADER-EXPORT"></script>
+    <script type="module" src="js/app.js?v=15-HEADER-EXPORT"></script>
 </body>
 </html>
