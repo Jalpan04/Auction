@@ -86,20 +86,22 @@ async function exportToCSV() {
 // Better: Add a listener for when Lobby is shown.
 // For now, let's just run it periodically or when we return to lobby.
 // Let's expose a function `loadHistory` that app.js can call.
+// Load History with Reverse Sort
 window.loadAuctionHistory = async () => {
     const list = getEl('past-matches-list');
     if(!list) return;
-    
-    // For Mock Persisted, we can scan rooms
-    // In Real Firebase, querying all rooms might be heavy, but fine for prototype.
+
     try {
         const snap = await get(ref(db, 'rooms'));
         if (snap.exists()) {
             const rooms = snap.val();
             list.innerHTML = '';
-            Object.keys(rooms).forEach(key => {
+            // Sort keys descending (Newest First assuming timestamp-based or sequential keys)
+            // Firebase push keys are timestamp-based.
+            const sortedKeys = Object.keys(rooms).sort().reverse();
+
+            sortedKeys.forEach(key => {
                 const r = rooms[key];
-                 // Filter? Show all for now.
                 const status = r.status || "WAITING";
                 const matchName = r.matchName || `Room ${key}`;
                 const li = document.createElement('li');
@@ -113,7 +115,6 @@ window.loadAuctionHistory = async () => {
                     <span style="font-size:0.8rem">${status}</span>
                 `;
                 li.onclick = () => {
-                     // Click to copy or rejoin?
                      getEl('room-code-input').value = key;
                 };
                 list.appendChild(li);
@@ -122,173 +123,21 @@ window.loadAuctionHistory = async () => {
     } catch(e) { console.error(e); }
 };
 
-
-function log(msg) {
-    console.log(msg);
-    if(window.logDebug) window.logDebug(msg);
-}
+// ... [Log Function] ...
 
 // --- LOBBY LOGIC ---
 
-async function hostAuction() {
-    const user = auth.currentUser;
-    if (!user) return alert("Must be logged in.");
-
-    const code = generateRoomCode();
-    const roomRef = ref(db, `rooms/${code}`);
-
-    try {
-        await set(roomRef, {
-            admin: user.uid,
-            status: "WAITING",
-            createdAt: Date.now()
-        });
-        
-        // Add Host as "Auditor" user so they can place bids
-        await set(ref(db, `rooms/${code}/users/${user.uid}`), {
-            username: "Host (Auditor)",
-            balance: totalPurse, // Set to default purse (50) initially
-            team: [],
-            isHost: true
-        });
-
-        currentRoomCode = code;
-        currentRole = 'admin';
-        getEl('admin-room-code').textContent = code;
-        showAdmin();
-        setupAdminListeners(code);
-    } catch (e) {
-        log("Host failed: " + e.message);
-        alert("Could not create room.");
-    }
-}
-
-async function joinAuction() {
-    const code = getEl('room-code-input').value.trim().toUpperCase();
-    if (!code) return alert("Enter a room code.");
-
-    const user = auth.currentUser;
-    if (!user) return alert("Must be logged in.");
-
-    log(`Attempting join: ${code}`);
-
-    const roomRef = ref(db, `rooms/${code}`);
-    const snapshot = await get(roomRef);
-
-    if (snapshot.exists()) {
-        const roomData = snapshot.val();
-        log("Room found. Config: " + JSON.stringify(roomData.config || {}));
-        
-        currentRoomCode = code;
-        currentRole = 'user';
-        
-        // Initialize Game Params from DB if exists, else defaults
-        if (roomData.config) {
-            totalPurse = roomData.config.purse || 50;
-            maxSquad = roomData.config.maxSquad || 6;
-            minSquad = roomData.config.minSquad || 5;
-        }
-
-        const roomUserRef = ref(db, `rooms/${code}/users/${user.uid}`);
-        
-        // Only reset balance if not already joined? 
-        // For simplicity, we reset or ensure defaults. 
-        // IMPORTANT: We use 'purse' from config.
-        const userSnap = await get(roomUserRef);
-        if (!userSnap.exists()) {
-             await update(roomUserRef, {
-                username: user.email ? user.email.split('@')[0] : "AnonymousUser", 
-                balance: totalPurse, 
-                team: []
-            });
-        }
-
-        showUser();
-        // Update UI max squad label
-        if(getEl('my-max-squad')) getEl('my-max-squad').textContent = maxSquad;
-        
-        setupUserListeners(code);
-        
-        // PERSISTENCE: Save Session
-        localStorage.setItem('auction_session', JSON.stringify({
-            code: currentRoomCode,
-            role: 'user'
-        }));
-    } else {
-        alert("Room not found.");
-    }
-}
-
-// --- PERSISTENCE RESTORE ---
-window.restoreSession = async (code, role) => {
-    log(`Restoring Session: ${code} as ${role}`);
-    const user = auth.currentUser;
-    if (!user) return; // Can't restore if not logged in
-
-    currentRoomCode = code;
-    currentRole = role;
-
-    // Fetch Room Data to Sync Config
-    try {
-        const snap = await get(ref(db, `rooms/${code}`));
-        if (!snap.exists()) {
-            console.warn("Restored room does not exist.");
-            localStorage.removeItem('auction_session');
-            return;
-        }
-        const data = snap.val();
-        if (data.config) {
-            totalPurse = data.config.purse;
-            maxSquad = data.config.maxSquad;
-            minSquad = data.config.minSquad;
-        }
-        
-        if (role === 'admin') {
-            getEl('admin-room-code').textContent = code;
-            showAdmin();
-            // If setup was done (status LIVE), show controls. Else show setup.
-            if (data.status === 'LIVE') {
-                hideEl('admin-setup');
-                showEl('admin-controls');
-                
-                // REVEAL UI if LIVE (Persistence)
-                const sidebar = getEl('admin-sidebar');
-                if(sidebar) sidebar.classList.remove('hidden');
-                const codeHeader = getEl('admin-room-codes-header');
-                if(codeHeader) codeHeader.classList.remove('hidden');
-
-            } else {
-                hideEl('admin-setup'); // Wait, if not live, show setup?
-                // The logical flow was: if not live, show setup.
-                showEl('admin-setup');
-                hideEl('admin-controls');
-                
-                // Ensure Hidden if not live
-                const sidebar = getEl('admin-sidebar');
-                if(sidebar) sidebar.classList.add('hidden');
-                const codeHeader = getEl('admin-room-codes-header');
-                if(codeHeader) codeHeader.classList.add('hidden');
-            }
-            setupAdminListeners(code);
-        } else {
-            showUser();
-            if(getEl('my-max-squad')) getEl('my-max-squad').textContent = maxSquad;
-            setupUserListeners(code);
-        }
-    } catch (e) {
-        console.error("Restore failed", e);
-    }
-};
-
-window.clearSession = () => {
-    localStorage.removeItem('auction_session');
-};
+// ...
 
 // --- ADMIN LOGIC ---
 
 async function setupPlayers() {
     const input = getEl('player-list-input').value;
     const matchName = getEl('input-match-name').value.trim();
+    
+    // Validation: Match Name is Mandatory
+    if (!matchName) return alert("Please enter a Match Name.");
+
     // Game Config Inputs
     const purseVal = parseInt(getEl('input-purse').value) || 50;
     const maxVal = parseInt(getEl('input-max-squad').value) || 6;
@@ -306,7 +155,7 @@ async function setupPlayers() {
 
     // Save Config & Players to DB
     await update(ref(db, `rooms/${currentRoomCode}`), {
-        matchName: matchName || `Room ${currentRoomCode}`,
+        matchName: matchName, // Used provided name
         players: playersList,
         config: {
             purse: purseVal,
