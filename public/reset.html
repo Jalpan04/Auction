@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RESET DB</title>
+</head>
+<body style="background: #111; color: white; display: flex; flex-direction:column; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif;">
+    
+    <h1>DANGER ZONE</h1>
+    <p>Clicking the button below will DELETE ALL AUCTION DATA.</p>
+    <button id="btn-reset" style="padding: 20px 40px; background: red; color: white; border: none; font-size: 20px; cursor: pointer; border-radius: 8px;">
+        RESET DATABASE
+    </button>
+    <div id="status" style="margin-top: 20px; color: #aaa;"></div>
+
+    <script type="module">
+        import { db, ref, set } from './js/firebase-config.js';
+
+        document.getElementById('btn-reset').onclick = async () => {
+            if(confirm("ARE YOU SURE? THIS CANNOT BE UNDONE.")) {
+                document.getElementById('status').innerText = "Reseting...";
+                try {
+                    await set(ref(db, 'rooms'), null);
+                    document.getElementById('status').innerText = "SUCCESS! Database is empty.";
+                    document.getElementById('btn-reset').style.display = 'none';
+                    // Clear local storage too
+                    localStorage.clear();
+                } catch (e) {
+                    document.getElementById('status').innerText = "Error: " + e.message;
+                    console.error(e);
+                }
+            }
+        };
+    </script>
+</body>
+</html>

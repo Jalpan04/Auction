@@ -22,7 +22,11 @@ window.addEventListener('click', (e) => {
     if (id === 'btn-host') hostAuction();
     if (id === 'btn-join') {
         if(window.logDebug) window.logDebug("Auction: Join Clicked (Global)");
-        joinAuction();
+        joinAuction().catch(err => {
+            console.error("Join Failed:", err);
+            if(window.logDebug) window.logDebug("Join Crash: " + err.message);
+            alert("Join Error: " + err.message);
+        });
     }
     
     // Admin
@@ -123,11 +127,173 @@ window.loadAuctionHistory = async () => {
     } catch(e) { console.error(e); }
 };
 
-// ... [Log Function] ...
+function log(msg) {
+    console.log(msg);
+    if(window.logDebug) window.logDebug(msg);
+}
 
 // --- LOBBY LOGIC ---
 
-// ...
+async function hostAuction() {
+    const user = auth.currentUser;
+    if (!user) return alert("Must be logged in.");
+
+    const code = generateRoomCode();
+    const roomRef = ref(db, `rooms/${code}`);
+
+    try {
+        await set(roomRef, {
+            admin: user.uid,
+            status: "WAITING",
+            createdAt: Date.now()
+        });
+        
+        // Add Host as "Auditor" user so they can place bids
+        await set(ref(db, `rooms/${code}/users/${user.uid}`), {
+            username: "Host (Auditor)",
+            balance: totalPurse, // Set to default purse (50) initially
+            team: [],
+            isHost: true
+        });
+
+        currentRoomCode = code;
+        currentRole = 'admin';
+        getEl('admin-room-code').textContent = code;
+        showAdmin();
+        setupAdminListeners(code);
+    } catch (e) {
+        log("Host failed: " + e.message);
+        alert("Could not create room.");
+    }
+}
+
+async function joinAuction() {
+    log("joinAuction() called"); // DEBUG
+    const codeInput = getEl('room-code-input');
+    if(!codeInput) return alert("Internal Error: Input missing");
+    
+    const code = codeInput.value.trim().toUpperCase();
+    if (!code) return alert("Enter a room code.");
+
+    const user = auth.currentUser;
+    if (!user) {
+        log("Join failed: No currentUser");
+        return alert("Must be logged in.");
+    }
+
+    log(`Attempting join: ${code}`);
+
+    const roomRef = ref(db, `rooms/${code}`);
+    const snapshot = await get(roomRef);
+
+    if (snapshot.exists()) {
+        const roomData = snapshot.val();
+        log("Room found. Config: " + JSON.stringify(roomData.config || {}));
+        
+        currentRoomCode = code;
+        currentRole = 'user';
+        
+        // Initialize Game Params from DB if exists, else defaults
+        if (roomData.config) {
+            totalPurse = roomData.config.purse || 50;
+            maxSquad = roomData.config.maxSquad || 6;
+            minSquad = roomData.config.minSquad || 5;
+        }
+
+        const roomUserRef = ref(db, `rooms/${code}/users/${user.uid}`);
+        
+        // Only reset balance if not already joined? 
+        // For simplicity, we reset or ensure defaults. 
+        // IMPORTANT: We use 'purse' from config.
+        const userSnap = await get(roomUserRef);
+        if (!userSnap.exists()) {
+             await update(roomUserRef, {
+                username: user.email ? user.email.split('@')[0] : "AnonymousUser", 
+                balance: totalPurse, 
+                team: []
+            });
+        }
+
+        showUser();
+        // Update UI max squad label
+        if(getEl('my-max-squad')) getEl('my-max-squad').textContent = maxSquad;
+        
+        setupUserListeners(code);
+        
+        // PERSISTENCE: Save Session
+        localStorage.setItem('auction_session', JSON.stringify({
+            code: currentRoomCode,
+            role: 'user'
+        }));
+    } else {
+        alert("Room not found.");
+    }
+}
+
+// --- PERSISTENCE RESTORE ---
+window.restoreSession = async (code, role) => {
+    log(`Restoring Session: ${code} as ${role}`);
+    const user = auth.currentUser;
+    if (!user) return; // Can't restore if not logged in
+
+    currentRoomCode = code;
+    currentRole = role;
+
+    // Fetch Room Data to Sync Config
+    try {
+        const snap = await get(ref(db, `rooms/${code}`));
+        if (!snap.exists()) {
+            console.warn("Restored room does not exist.");
+            localStorage.removeItem('auction_session');
+            return;
+        }
+        const data = snap.val();
+        if (data.config) {
+            totalPurse = data.config.purse;
+            maxSquad = data.config.maxSquad;
+            minSquad = data.config.minSquad;
+        }
+        
+        if (role === 'admin') {
+            getEl('admin-room-code').textContent = code;
+            showAdmin();
+            // If setup was done (status LIVE), show controls. Else show setup.
+            if (data.status === 'LIVE') {
+                hideEl('admin-setup');
+                showEl('admin-controls');
+                
+                // REVEAL UI if LIVE (Persistence)
+                const sidebar = getEl('admin-sidebar');
+                if(sidebar) sidebar.classList.remove('hidden');
+                const codeHeader = getEl('admin-room-codes-header');
+                if(codeHeader) codeHeader.classList.remove('hidden');
+
+            } else {
+                hideEl('admin-setup'); // Wait, if not live, show setup?
+                // The logical flow was: if not live, show setup.
+                showEl('admin-setup');
+                hideEl('admin-controls');
+                
+                // Ensure Hidden if not live
+                const sidebar = getEl('admin-sidebar');
+                if(sidebar) sidebar.classList.add('hidden');
+                const codeHeader = getEl('admin-room-codes-header');
+                if(codeHeader) codeHeader.classList.add('hidden');
+            }
+            setupAdminListeners(code);
+        } else {
+            showUser();
+            if(getEl('my-max-squad')) getEl('my-max-squad').textContent = maxSquad;
+            setupUserListeners(code);
+        }
+    } catch (e) {
+        console.error("Restore failed", e);
+    }
+};
+
+window.clearSession = () => {
+    localStorage.removeItem('auction_session');
+};
 
 // --- ADMIN LOGIC ---
 
@@ -371,6 +537,11 @@ function setupAdminListeners(code) {
             renderHostSquad(users); // NEW: Update Host's personal squad view
         }
     });
+
+    onValue(ref(db, `rooms/${code}/players`), (snapshot) => {
+        const players = snapshot.val();
+        if(players) renderUnsoldPlayers(players, 'admin');
+    });
 }
 
 function renderHostSquad(users) {
@@ -408,7 +579,13 @@ function setupUserListeners(code) {
         updateCurrentPlayerUI(data, 'user');
     });
 
-    const user = auth.currentUser;
+    onValue(ref(db, `rooms/${code}/players`), (snapshot) => {
+        const players = snapshot.val();
+        if (players) {
+            renderUnsoldPlayers(players, 'user');
+        }
+    });
+
     onValue(ref(db, `rooms/${code}/users/${user.uid}`), (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -522,4 +699,35 @@ function renderLeaderboard(users) {
         `;
         div.appendChild(d);
     });
+}
+
+function renderUnsoldPlayers(players, role) {
+    // Filter Unsold
+    const unsold = players.filter(p => !p.sold).sort((a,b) => a.name.localeCompare(b.name));
+    
+    let countId, listId;
+    if (role === 'admin') {
+        countId = 'host-unsold-count';
+        listId = 'host-unsold-list';
+    } else {
+        countId = 'user-unsold-count';
+        listId = 'user-unsold-list';
+    }
+
+    const countEl = getEl(countId);
+    const listEl = getEl(listId);
+
+    if (countEl) countEl.textContent = unsold.length;
+    
+    if (listEl) {
+        listEl.innerHTML = '';
+        unsold.forEach(p => {
+            const li = document.createElement('li');
+            li.textContent = p.name;
+            li.style.borderBottom = '1px solid #333';
+            li.style.padding = '5px 0';
+            li.style.color = '#aaa';
+            listEl.appendChild(li);
+        });
+    }
 }

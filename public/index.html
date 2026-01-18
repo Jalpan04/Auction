@@ -31,6 +31,14 @@
             if(dbg) dbg.style.display = 'block';
             return false;
         };
+
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error("Unhandled Rejection:", event.reason);
+            const content = document.getElementById('debug-log-content');
+            if(content) content.innerHTML += `<br><span style="color:red">ASYNC ERROR: ${event.reason}</span>`;
+            const dbg = document.getElementById('debug-console');
+            if(dbg) dbg.style.display = 'block';
+        });
         window.logDebug = function(msg) {
              const content = document.getElementById('debug-log-content');
              if(content) {
@@ -196,6 +204,16 @@
                         </ul>
                     </div>
 
+                    <div class="card" style="background: var(--card-bg); padding: 20px; margin-bottom: 20px; height: auto;">
+                        <h3>UNSOLD PLAYERS (<span id="host-unsold-count">0</span>)</h3>
+                        <details id="host-unsold-details">
+                            <summary style="cursor:pointer; color:var(--text-secondary); margin-bottom:10px;">Show List</summary>
+                            <ul id="host-unsold-list" style="list-style: none; margin-top: 10px; font-size: 0.9rem; max-height: 200px; overflow-y: auto;">
+                                <!-- Unsold Players -->
+                            </ul>
+                        </details>
+                    </div>
+
                     <div class="card" style="background: var(--card-bg); padding: 20px; height: auto;">
                         <h3>SQUADS</h3>
                         <div id="admin-teams-list">
@@ -246,6 +264,15 @@
                         </ul>
                     </div>
                     <div class="card" style="background: var(--card-bg); padding: 20px;">
+                        <h3>UNSOLD PLAYERS (<span id="user-unsold-count">0</span>)</h3>
+                        <details id="user-unsold-details">
+                            <summary style="cursor:pointer; color:var(--text-secondary); margin-bottom:10px;">Show List</summary>
+                             <ul id="user-unsold-list" style="list-style: none; margin-top: 10px; font-size: 0.9rem; max-height: 200px; overflow-y: auto;">
+                                <!-- Unsold Players -->
+                            </ul>
+                        </details>
+                    </div>
+                    <div class="card" style="background: var(--card-bg); padding: 20px;">
                         <h3>SQUADS</h3>
                         <div id="leaderboard"></div>
                     </div>
@@ -255,10 +282,10 @@
     </div>
 
     <!-- Scripts -->
-    <script type="module" src="js/firebase-config.js?v=18-HISTORY-REQ"></script>
-    <script type="module" src="js/utils.js?v=18-HISTORY-REQ"></script>
-    <script type="module" src="js/auth.js?v=18-HISTORY-REQ"></script>
-    <script type="module" src="js/auction.js?v=18-HISTORY-REQ"></script>
-    <script type="module" src="js/app.js?v=18-HISTORY-REQ"></script>
+    <script type="module" src="js/firebase-config.js?v=25-FINAL-UNSOLD"></script>
+    <script type="module" src="js/utils.js?v=25-FINAL-UNSOLD"></script>
+    <script type="module" src="js/auth.js?v=25-FINAL-UNSOLD"></script>
+    <script type="module" src="js/auction.js?v=25-FINAL-UNSOLD"></script>
+    <script type="module" src="js/app.js?v=25-FINAL-UNSOLD"></script>
 </body>
 </html>
