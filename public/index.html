@@ -115,7 +115,7 @@
         <!-- Admin View -->
         <section id="admin-view" class="view hidden">
             <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                <h2>AUCTION ROOM <span class="accent" style="font-size:0.8em">(HOST)</span> | <span id="admin-room-code" class="mono"></span></h2>
+                <h2>AUCTION ROOM <span class="accent" style="font-size:0.8em">(HOST)</span> | <span id="admin-room-codes-header" class="hidden"><span id="admin-room-code" class="mono"></span></span></h2>
                 <button class="btn-quit btn" style="font-size: 0.8rem;">Exit</button>
             </header>
             
@@ -130,15 +130,15 @@
                                 <input type="number" id="input-purse" value="50">
                             </div>
                            <div>
-                                <label style="font-size: 0.8rem; color: var(--text-secondary);">Managers ($M$)</label>
+                                <label style="font-size: 0.8rem; color: var(--text-secondary);">Managers</label>
                                 <input type="number" id="input-managers" value="4">
                             </div>
                             <div>
-                                <label style="font-size: 0.8rem; color: var(--text-secondary);">Max Squad ($S_{max}$)</label>
+                                <label style="font-size: 0.8rem; color: var(--text-secondary);">Max Squad Size</label>
                                 <input type="number" id="input-max-squad" value="6">
                             </div>
                              <div>
-                                <label style="font-size: 0.8rem; color: var(--text-secondary);">Min Squad ($S_{min}$)</label>
+                                <label style="font-size: 0.8rem; color: var(--text-secondary);">Min Squad Size</label>
                                 <input type="number" id="input-min-squad" value="5">
                             </div>
                         </div>
@@ -180,7 +180,7 @@
                     </div>
                 </div>
 
-                <aside>
+                <aside id="admin-sidebar" class="hidden">
                     <div class="card" style="background: var(--card-bg); padding: 20px; margin-bottom: 20px; height: auto;">
                         <h3>MY SQUAD (HOST)</h3>
                          <div style="margin-bottom:10px; font-size:0.8rem; color:var(--text-secondary);">
@@ -250,10 +250,10 @@
     </div>
 
     <!-- Scripts -->
-    <script type="module" src="js/firebase-config.js?v=11-UI-PARITY"></script>
-    <script type="module" src="js/utils.js?v=11-UI-PARITY"></script>
-    <script type="module" src="js/auth.js?v=11-UI-PARITY"></script>
-    <script type="module" src="js/auction.js?v=11-UI-PARITY"></script>
-    <script type="module" src="js/app.js?v=11-UI-PARITY"></script>
+    <script type="module" src="js/firebase-config.js?v=12-CLEANUP"></script>
+    <script type="module" src="js/utils.js?v=12-CLEANUP"></script>
+    <script type="module" src="js/auth.js?v=12-CLEANUP"></script>
+    <script type="module" src="js/auction.js?v=12-CLEANUP"></script>
+    <script type="module" src="js/app.js?v=12-CLEANUP"></script>
 </body>
 </html>

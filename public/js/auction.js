@@ -207,9 +207,24 @@ window.restoreSession = async (code, role) => {
             if (data.status === 'LIVE') {
                 hideEl('admin-setup');
                 showEl('admin-controls');
+                
+                // REVEAL UI if LIVE (Persistence)
+                const sidebar = getEl('admin-sidebar');
+                if(sidebar) sidebar.classList.remove('hidden');
+                const codeHeader = getEl('admin-room-codes-header');
+                if(codeHeader) codeHeader.classList.remove('hidden');
+
             } else {
+                hideEl('admin-setup'); // Wait, if not live, show setup?
+                // The logical flow was: if not live, show setup.
                 showEl('admin-setup');
                 hideEl('admin-controls');
+                
+                // Ensure Hidden if not live
+                const sidebar = getEl('admin-sidebar');
+                if(sidebar) sidebar.classList.add('hidden');
+                const codeHeader = getEl('admin-room-codes-header');
+                if(codeHeader) codeHeader.classList.add('hidden');
             }
             setupAdminListeners(code);
         } else {
@@ -277,6 +292,13 @@ async function setupPlayers() {
     hideEl('admin-setup');
     showEl('admin-controls');
     
+    // REVEAL UI ELEMENTS on START
+    const sidebar = getEl('admin-sidebar');
+    if(sidebar) sidebar.classList.remove('hidden');
+
+    const codeHeader = getEl('admin-room-codes-header');
+    if(codeHeader) codeHeader.classList.remove('hidden');
+
     // PERSISTENCE: Save Session
     localStorage.setItem('auction_session', JSON.stringify({
         code: currentRoomCode,
