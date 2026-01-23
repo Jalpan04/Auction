@@ -13,9 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupNavigation() {
     // Auth State Listener
     onAuthStateChanged(auth, (user) => {
-        // Hide Loading View
-        hideEl('loading-view');
-
         if (user) {
             currentUser = user;
             console.log("User logged in:", user.email);
@@ -69,7 +66,6 @@ function setupNavigation() {
 
 // View Switchers
 function hideAllViews() {
-    hideEl('loading-view'); // Ensure loading is hidden
     hideEl('auth-view');
     hideEl('lobby-view');
     hideEl('admin-view');
