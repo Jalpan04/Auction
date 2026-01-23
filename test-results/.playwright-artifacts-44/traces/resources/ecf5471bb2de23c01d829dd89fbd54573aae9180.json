@@ -1,0 +1,24 @@
+{
+  "kind": "identitytoolkit#GetAccountInfoResponse",
+  "users": [
+    {
+      "localId": "OUg150QgqZRKopG4bipybyomHPB3",
+      "email": "god@auction.app",
+      "passwordHash": "UkVEQUNURUQ=",
+      "emailVerified": false,
+      "passwordUpdatedAt": 1768731981120,
+      "providerUserInfo": [
+        {
+          "providerId": "password",
+          "federatedId": "god@auction.app",
+          "email": "god@auction.app",
+          "rawId": "god@auction.app"
+        }
+      ],
+      "validSince": "1768731981",
+      "lastLoginAt": "1769170770630",
+      "createdAt": "1768731981120",
+      "lastRefreshAt": "2026-01-23T12:19:30.630Z"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "auction-app-tests",
+  "version": "1.0.0",
+  "description": "Automated E2E tests for Auction App",
+  "scripts": {
+    "test": "npx playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}

@@ -1,0 +1,52 @@
+/* Mobile First Responsive Overrides */
+
+/* Stack Grid Layouts on small screens */
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr !important; /* Force stack */
+    }
+    
+    /* Ensure Sidebar logic doesn't break flow */
+    aside {
+        order: 2; /* Put sidebar below main content */
+        margin-top: 20px;
+    }
+    
+    .main-auction-area, .main-content {
+        order: 1;
+    }
+    
+    /* Adjust Admin Setup Grid */
+    #admin-setup .grid {
+        grid-template-columns: 1fr 1fr; /* Keep 2 cols for inputs if possible */
+    }
+
+    /* Buttons bigger for touch */
+    .btn {
+        min-height: 50px;
+        font-size: 1.1rem;
+    }
+    
+    /* Player Name Size */
+    #user-player-name, #current-player-name {
+        font-size: 2rem !important; /* Smaller than desktop */
+    }
+    
+    .card {
+        padding: 15px !important;
+    }
+    
+    /* Navbar stack */
+    header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    /* Unsold Players List on Mobile */
+    details#host-unsold-details, details#user-unsold-details {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 5px;
+        border-radius: 5px;
+    }
+}
