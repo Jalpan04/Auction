@@ -230,25 +230,26 @@ async function joinAuction() {
         log("Room found. Config: " + JSON.stringify(roomData.config || {}));
         
         currentRoomCode = code;
-        currentRole = 'user';
         
-        // Initialize Game Params from DB if exists, else defaults
+        // CHECK IF I AM THE HOST
+        if (roomData.admin === user.uid) {
+            currentRole = 'admin';
+            console.log("Welcome back, Host!");
+        } else {
+            currentRole = 'user';
+        }
+        
+        // Initialize Game Params
         if (roomData.config) {
-            console.log(`[DEBUG] Room Config Found:`, roomData.config); // DEBUG
-            totalPurse = parseInt(roomData.config.purse) || 50; // Ensure int
-            console.log(`[DEBUG] Set totalPurse to: ${totalPurse}`);
+            totalPurse = parseInt(roomData.config.purse) || 50; 
             maxSquad = roomData.config.maxSquad || 6;
             minSquad = roomData.config.minSquad || 5;
-        } else {
-             console.log(`[DEBUG] No Room Config. Using Defaults. purse=${totalPurse}`);
         }
 
         const roomUserRef = ref(db, `rooms/${code}/users/${user.uid}`);
         
-        // Only reset balance if not already joined? 
-        // For simplicity, we reset or ensure defaults. 
-        // IMPORTANT: We use 'purse' from config.
         const userSnap = await get(roomUserRef);
+        // Only initialize if NEW user. Hosts already have data.
         if (!userSnap.exists()) {
              await update(roomUserRef, {
                 username: user.email ? user.email.split('@')[0] : "AnonymousUser", 
@@ -257,16 +258,24 @@ async function joinAuction() {
             });
         }
 
-        showUser();
-        // Update UI max squad label
-        if(getEl('my-max-squad')) getEl('my-max-squad').textContent = maxSquad;
-        
-        setupUserListeners(code);
+        // ROUTE BASED ON ROLE
+        if (currentRole === 'admin') {
+            getEl('admin-room-code').textContent = code;
+            const codeHeader = getEl('admin-room-codes-header');
+            if(codeHeader) codeHeader.classList.remove('hidden');
+            
+            showAdmin();
+            setupAdminListeners(code);
+        } else {
+            showUser();
+            if(getEl('my-max-squad')) getEl('my-max-squad').textContent = maxSquad;
+            setupUserListeners(code);
+        }
         
         // PERSISTENCE: Save Session
         localStorage.setItem('auction_session', JSON.stringify({
             code: currentRoomCode,
-            role: 'user'
+            role: currentRole
         }));
     } else {
         showModal("Room not found. Please check the code.", "Join Error");

@@ -6,6 +6,7 @@
     "test": "npx playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.0"
+    "@playwright/test": "^1.40.0",
+    "firebase-tools": "^15.4.0"
   }
 }
