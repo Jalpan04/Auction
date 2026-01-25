@@ -108,18 +108,18 @@ async function handleAuthAction(username, password, confirmPassword) {
     const cleanUser = username.trim().replace(/[^a-zA-Z0-9]/g, '');
     if (cleanUser.length < 3) return showError("Username contains invalid characters.");
 
-    const fakeEmail = `${cleanUser}@auction.app`;
+    const generatedEmail = `${cleanUser}@auction.app`;
     
     btn.disabled = true;
     btn.textContent = "PROCESSING...";
 
     try {
         if (authMode === 'LOGIN') {
-            await signInWithEmailAndPassword(auth, fakeEmail, password);
+            await signInWithEmailAndPassword(auth, generatedEmail, password);
              console.log("Login call complete.");
         } else {
-            console.log(`Registering: ${fakeEmail}`);
-            const cred = await createUserWithEmailAndPassword(auth, fakeEmail, password);
+            console.log(`Registering: ${generatedEmail}`);
+            const cred = await createUserWithEmailAndPassword(auth, generatedEmail, password);
             console.log("Register call complete. UID:", cred.user.uid);
             
             const user = cred.user; 

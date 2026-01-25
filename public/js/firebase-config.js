@@ -14,6 +14,7 @@ import {
     update as realUpdate, 
     push as realPush, 
     child as realChild,
+    runTransaction as realRunTransaction,
     query as realQuery,
     orderByChild as realOrderByChild,
     limitToLast as realLimitToLast
@@ -27,8 +28,6 @@ import {
     signOut as realSignOut, 
     signInAnonymously as realSignInAnon 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-import { runTransaction as realRunTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 
 // YOUR FIREBASE CONFIG
