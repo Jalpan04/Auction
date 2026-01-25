@@ -1,4 +1,4 @@
-import { db, ref, set, get, onValue, update, push, child, runTransaction } from './firebase-config.js';
+import { db, ref, set, get, onValue, update, push, child, runTransaction, query, orderByChild, limitToLast } from './firebase-config.js';
 import { auth } from './firebase-config.js';
 import { getEl, hideEl, showEl, generateRoomCode, formatMoney } from './utils.js';
 import { showAdmin, showUser } from './app.js';
@@ -119,12 +119,14 @@ window.loadAuctionHistory = async () => {
     if(!list) return;
 
     try {
-        const snap = await get(ref(db, 'rooms'));
+        // Optimization: Limit to last 20 rooms to prevent lag
+        const q = query(ref(db, 'rooms'), orderByChild('createdAt'), limitToLast(20));
+        const snap = await get(q);
+
         if (snap.exists()) {
             const rooms = snap.val();
             list.innerHTML = '';
-            // Sort keys descending (Newest First assuming timestamp-based or sequential keys)
-            // Firebase push keys are timestamp-based.
+            // Sort keys descending (Newest First)
             const sortedKeys = Object.keys(rooms).sort().reverse();
 
             sortedKeys.forEach(key => {
@@ -376,9 +378,10 @@ async function setupPlayers() {
     // Save Config & Players to DB
     console.log("setupPlayers: Updating DB for Room: " + currentRoomCode);
     try {
+        // 1. Save Game Metadata (Lite)
         await update(ref(db, `rooms/${currentRoomCode}`), {
             matchName: matchName,
-            players: playersList,
+            // players: playersList, // MOVED to separate node to reduce transaction payload size
             config: {
                 purse: purseVal,
                 maxSquad: maxVal,
@@ -387,6 +390,9 @@ async function setupPlayers() {
             },
             status: "LIVE"
         });
+
+        // 2. Save Players List (Heavy) - Separate Node
+        await set(ref(db, `room_players/${currentRoomCode}`), playersList);
         
         // Update local vars
         totalPurse = purseVal;
@@ -423,18 +429,40 @@ async function setupPlayers() {
 }
 
 async function spinWheel() {
-    const roomSnap = await get(ref(db, `rooms/${currentRoomCode}`));
-    const roomData = roomSnap.val();
-    if (!roomData || !roomData.players) return;
+    // 1. Fetch Players from New Node
+    const playersSnap = await get(ref(db, `room_players/${currentRoomCode}`));
+    if (!playersSnap.exists()) return alert("No players found! (Check if room is migrated)");
 
-    const unsold = roomData.players.filter(p => !p.sold);
+    const playersVal = playersSnap.val();
+    // Normalize to array with keys
+    let allPlayers = [];
+    if (Array.isArray(playersVal)) {
+        allPlayers = playersVal.map((p, i) => ({ ...p, key: i }));
+    } else {
+        allPlayers = Object.keys(playersVal).map(key => ({ ...playersVal[key], key: key }));
+    }
+
+    const unsold = allPlayers.filter(p => !p.sold);
     if (unsold.length === 0) return alert("All players sold!");
 
-    const randomPlayer = unsold[Math.floor(Math.random() * unsold.length)];
+    // 2. Safeguard: Check against existing teams (Double Sold Prevention)
+    const usersSnap = await get(ref(db, `rooms/${currentRoomCode}/users`));
+    const users = usersSnap.exists() ? usersSnap.val() : {};
 
-    // Base Price is 0 Points (User Request)
+    const ownedNames = new Set();
+    Object.values(users).forEach(u => {
+        if(u.team) u.team.forEach(p => ownedNames.add(p.name));
+    });
+
+    const reallyUnsold = unsold.filter(p => !ownedNames.has(p.name));
+    if (reallyUnsold.length === 0) return alert("All players actually sold (Sync Check)!");
+
+    const randomPlayer = reallyUnsold[Math.floor(Math.random() * reallyUnsold.length)];
+
+    // 3. Set Current Player with reference to original index
     await update(ref(db, `rooms/${currentRoomCode}/current_player`), {
         name: randomPlayer.name,
+        originalIndex: randomPlayer.key, // Saved for updating 'sold' status later
         basePrice: 0, 
         currentBid: 0, 
         highestBidderUID: null,
@@ -446,17 +474,24 @@ async function sellPlayer() {
     const btn = document.getElementById('btn-sell');
     if(btn) btn.disabled = true; // Prevent Double Clicking UI Side
 
+    // 1. Snapshot Current Player to get ID
+    const playerSnap = await get(ref(db, `rooms/${currentRoomCode}/current_player`));
+    if(!playerSnap.exists()) {
+        if(btn) btn.disabled = false;
+        return;
+    }
+    const targetPlayer = playerSnap.val();
+
     const roomRef = ref(db, `rooms/${currentRoomCode}`);
 
     try {
         await runTransaction(roomRef, (roomData) => {
             // CRITICAL FIX: If roomData is null (not cached), return it to trigger server retry.
-            // Returning undefined aborts the transaction!
             if (roomData === null) return roomData; 
             
             const currentP = roomData.current_player;
-            if (!currentP || !currentP.highestBidderUID) {
-                // Abort transaction if no active player/bidder
+            // Verify sync
+            if (!currentP || currentP.name !== targetPlayer.name || !currentP.highestBidderUID) {
                 return; 
             }
 
@@ -477,13 +512,7 @@ async function sellPlayer() {
                 price: currentP.currentBid
             });
 
-            // Mark Player as Sold
-            if (roomData.players) {
-                roomData.players = roomData.players.map(p => {
-                    if (p.name === currentP.name) return { ...p, sold: true };
-                    return p;
-                });
-            }
+            // NOTE: We do NOT update players list here anymore (too big)
 
             // Clear Current Player
             roomData.current_player = null;
@@ -493,6 +522,11 @@ async function sellPlayer() {
         
         // Success
         console.log("Transaction Committed: Player Sold");
+
+        // 2. Mark as Sold in Separate List
+        if (targetPlayer.originalIndex !== undefined) {
+             await update(ref(db, `room_players/${currentRoomCode}/${targetPlayer.originalIndex}`), { sold: true });
+        }
 
     } catch (e) {
         console.error("Sell Transaction Failed", e);
@@ -602,9 +636,13 @@ function setupAdminListeners(code) {
         }
     });
 
-    onValue(ref(db, `rooms/${code}/players`), (snapshot) => {
-        const players = snapshot.val();
-        if(players) renderUnsoldPlayers(players, 'admin');
+    onValue(ref(db, `room_players/${code}`), (snapshot) => {
+        const val = snapshot.val();
+        if(val) {
+             // Normalize in case of sparse arrays/objects
+             const players = Array.isArray(val) ? val : Object.values(val);
+             renderUnsoldPlayers(players, 'admin');
+        }
     });
 }
 
@@ -647,10 +685,11 @@ function setupUserListeners(code) {
         updateCurrentPlayerUI(data, 'user');
     });
 
-    onValue(ref(db, `rooms/${code}/players`), (snapshot) => {
-        const players = snapshot.val();
-        if (players) {
-            renderUnsoldPlayers(players, 'user');
+    onValue(ref(db, `room_players/${code}`), (snapshot) => {
+        const val = snapshot.val();
+        if (val) {
+             const players = Array.isArray(val) ? val : Object.values(val);
+             renderUnsoldPlayers(players, 'user');
         }
     });
 

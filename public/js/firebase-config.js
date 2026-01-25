@@ -13,7 +13,10 @@ import {
     onValue as realOnValue, 
     update as realUpdate, 
     push as realPush, 
-    child as realChild 
+    child as realChild,
+    query as realQuery,
+    orderByChild as realOrderByChild,
+    limitToLast as realLimitToLast
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 import { 
@@ -65,6 +68,10 @@ export const update = USE_MOCK ? MockFirebase.update : realUpdate;
 export const push = USE_MOCK ? MockFirebase.push : realPush;
 export const onValue = USE_MOCK ? MockFirebase.onValue : realOnValue;
 export const runTransaction = USE_MOCK ? MockFirebase.runTransaction : realRunTransaction;
+
+export const query = USE_MOCK ? MockFirebase.query : realQuery;
+export const orderByChild = USE_MOCK ? MockFirebase.orderByChild : realOrderByChild;
+export const limitToLast = USE_MOCK ? MockFirebase.limitToLast : realLimitToLast;
 
 export const signInWithEmailAndPassword = USE_MOCK ? MockFirebase.signInWithEmailAndPassword : realSignInEmail;
 export const createUserWithEmailAndPassword = USE_MOCK ? MockFirebase.createUserWithEmailAndPassword : realCreateUser;

@@ -17,9 +17,21 @@ async function run() {
             const res = await fetch(`${DB_URL}/rooms/${CODE}.json`);
             const room = await res.json();
             
+            // 2. Fetch Players (New Structure)
+            const pRes = await fetch(`${DB_URL}/room_players/${CODE}.json`);
+            const players = await pRes.json();
+
             if(!room) { console.log("Room empty"); break; }
 
-            const unsold = (room.players || []).filter(p => !p.sold);
+            // Note: Bot needs index for update. Map keys.
+            let indexedPlayers = [];
+             if (Array.isArray(players)) {
+                indexedPlayers = players.map((p, i) => ({ ...p, key: i }));
+            } else if (players) {
+                indexedPlayers = Object.keys(players).map(key => ({ ...players[key], key: key }));
+            }
+
+            const unsold = indexedPlayers.filter(p => !p.sold);
             const currentP = room.current_player;
 
             // STATUS REPORT
@@ -33,6 +45,7 @@ async function run() {
                     method: 'PUT',
                     body: JSON.stringify({
                         name: nextP.name,
+                        originalIndex: nextP.key,
                         basePrice: 0,
                         currentBid: 0,
                         highestBidderUID: null,
@@ -59,11 +72,15 @@ async function run() {
                     body: JSON.stringify({ balance: newBalance, team: newTeam })
                 });
 
-                // 3. Update Player List (Mark Sold)
-                const allPlayers = room.players;
-                const pIdx = allPlayers.findIndex(p => p.name === currentP.name);
-                if(pIdx !== -1) {
-                    await fetch(`${DB_URL}/rooms/${CODE}/players/${pIdx}/sold.json`, {
+                // 3. Update Player List (Mark Sold) using originalIndex
+                let idx = currentP.originalIndex;
+                if (idx === undefined) {
+                    const found = indexedPlayers.find(p => p.name === currentP.name);
+                    if (found) idx = found.key;
+                }
+
+                if(idx !== undefined) {
+                    await fetch(`${DB_URL}/room_players/${CODE}/${idx}/sold.json`, {
                         method: 'PUT',
                         body: 'true' // Firebase bool
                     });

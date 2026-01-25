@@ -208,6 +208,34 @@ export const push = async (ref, value) => {
     return { key };
 };
 
+export const runTransaction = async (ref, transactionUpdate) => {
+    await delay(SIMULATED_DELAY_MS);
+    // 1. Get current data
+    const currentData = getRefData(ref.path);
+
+    // 2. Apply update function
+    const newData = transactionUpdate(currentData);
+
+    if (newData === undefined) {
+        return { committed: false, snapshot: { val: () => currentData } };
+    }
+
+    // 3. Save
+    setRefData(ref.path, newData);
+    saveDB();
+    triggerListeners(ref.path);
+
+    return { committed: true, snapshot: { val: () => newData } };
+};
+
+// Query stubs
+export const query = (ref, ...constraints) => {
+    // Return object compatible with get()
+    return { path: ref.path, constraints };
+};
+export const orderByChild = (path) => ({ type: 'orderByChild', path });
+export const limitToLast = (limit) => ({ type: 'limitToLast', limit });
+
 // --- Listeners ---
 const activeListeners = [];
 
