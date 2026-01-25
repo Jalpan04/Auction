@@ -631,8 +631,10 @@ function setupAdminListeners(code) {
     onValue(ref(db, `rooms/${code}/users`), (snapshot) => {
         const users = snapshot.val();
         if (users) {
+            window.latestUsersState = users;
             renderAdminTeams(users);
             renderHostSquad(users); // NEW: Update Host's personal squad view
+            if(window.latestPlayersList) renderUnsoldPlayers(window.latestPlayersList, 'admin');
         }
     });
 
@@ -641,6 +643,7 @@ function setupAdminListeners(code) {
         if(val) {
              // Normalize in case of sparse arrays/objects
              const players = Array.isArray(val) ? val : Object.values(val);
+             window.latestPlayersList = players;
              renderUnsoldPlayers(players, 'admin');
         }
     });
@@ -689,6 +692,7 @@ function setupUserListeners(code) {
         const val = snapshot.val();
         if (val) {
              const players = Array.isArray(val) ? val : Object.values(val);
+             window.latestPlayersList = players;
              renderUnsoldPlayers(players, 'user');
         }
     });
@@ -707,7 +711,11 @@ function setupUserListeners(code) {
 
     onValue(ref(db, `rooms/${code}/users`), (snapshot) => {
         const users = snapshot.val();
-        if (users) renderLeaderboard(users);
+        if (users) {
+            window.latestUsersState = users;
+            renderLeaderboard(users);
+            if(window.latestPlayersList) renderUnsoldPlayers(window.latestPlayersList, 'user');
+        }
     });
 }
 
@@ -809,8 +817,20 @@ function renderLeaderboard(users) {
 }
 
 function renderUnsoldPlayers(players, role) {
-    // Filter Unsold
-    const unsold = players.filter(p => !p.sold).sort((a,b) => a.name.localeCompare(b.name));
+    // UI Consistency Fix: Filter against currently owned players in UI as well
+    // This handles the edge case where "sold: true" update in room_players fails.
+
+    let ownedNames = new Set();
+    if (window.latestUsersState) {
+        Object.values(window.latestUsersState).forEach(u => {
+            if(u.team) u.team.forEach(p => ownedNames.add(p.name));
+        });
+    }
+
+    // Filter Unsold AND Not Owned
+    const unsold = players
+        .filter(p => !p.sold && !ownedNames.has(p.name))
+        .sort((a,b) => a.name.localeCompare(b.name));
     
     let countId, listId;
     if (role === 'admin') {
