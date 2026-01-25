@@ -105,6 +105,24 @@ h1, h2, h3 {
     color: var(--bg-color);
 }
 
+.btn-sold {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+    font-weight: 800;
+    border: none;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-sold:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+}
+
+.btn-sold:active {
+    transform: scale(0.95);
+}
+
 /* GLOBAL MOBILE FIXES */
 * {
     -webkit-tap-highlight-color: transparent; /* Remove gray tap box */

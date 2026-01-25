@@ -443,13 +443,23 @@ async function sellPlayer() {
 
     const roomRef = ref(db, `rooms/${currentRoomCode}`);
 
+    // Pre-Check: Ensure we have a valid sale target before starting transaction
+    try {
+        const checkSnap = await get(child(roomRef, 'current_player'));
+        const checkVal = checkSnap.val();
+        if (!checkVal) return showModal("No player active on the block.");
+        if (!checkVal.highestBidderUID) return showModal(`Cannot sell <b>${checkVal.name}</b>.<br>No bids placed yet.`);
+    } catch(err) {
+        console.error("Sell Pre-Check Error", err);
+    }
+
     try {
         await runTransaction(roomRef, (roomData) => {
-            if (!roomData) return; // Should not happen if room exists
+            if (!roomData) return roomData; // Retry if null
             
             const currentP = roomData.current_player;
             if (!currentP || !currentP.highestBidderUID) {
-                // Abort transaction if no active player/bidder
+                // Abort transaction if data changed since pre-check
                 return; 
             }
 
