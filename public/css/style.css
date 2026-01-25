@@ -121,9 +121,10 @@ h1, h2, h3 {
 }
 
 .btn-sold:active {
-    background: #FFA500;
+    background: #FFD700;
     color: #000;
-    border-color: #FFA500;
+    border-color: #FFD700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
 }
 
 /* GLOBAL MOBILE FIXES */
@@ -133,9 +134,17 @@ h1, h2, h3 {
 
 /* Force disable sticky hover on touch devices */
 @media (hover: none) {
-    .btn:hover {
+    .btn:not(.btn-sold):hover {
         background: transparent !important;
         color: var(--accent-color) !important;
+        box-shadow: none !important;
+    }
+    
+    /* Mobile Fix for Sold Button specifically */
+    .btn-sold:hover {
+        background: transparent !important;
+        color: #FFD700 !important;
+        border-color: #FFD700 !important;
         box-shadow: none !important;
     }
 }
