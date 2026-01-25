@@ -447,10 +447,19 @@ async function sellPlayer() {
     try {
         const checkSnap = await get(child(roomRef, 'current_player'));
         const checkVal = checkSnap.val();
-        if (!checkVal) return showModal("No player active on the block.");
-        if (!checkVal.highestBidderUID) return showModal(`Cannot sell <b>${checkVal.name}</b>.<br>No bids placed yet.`);
+        
+        if (!checkVal) {
+            if(btn) btn.disabled = false;
+            return showModal("No player active on the block.");
+        }
+        
+        if (!checkVal.highestBidderUID) {
+            if(btn) btn.disabled = false;
+            return showModal(`Cannot sell <b>${checkVal.name}</b>.<br>No bids placed yet.`);
+        }
     } catch(err) {
         console.error("Sell Pre-Check Error", err);
+        // Don't return here, let it try transaction or fail there, but ensure logic flow
     }
 
     try {

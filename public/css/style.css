@@ -106,21 +106,24 @@ h1, h2, h3 {
 }
 
 .btn-sold {
-    background: linear-gradient(135deg, #FFD700, #FFA500);
-    color: #000;
-    font-weight: 800;
-    border: none;
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
-    transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    background: transparent;
+    color: #FFA500;
+    font-weight: 700;
+    border: 2px solid #FFA500;
+    transition: all 0.15s ease;
 }
 
-.btn-sold:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+@media (hover: hover) {
+    .btn-sold:hover {
+        border-color: #FFD700;
+        color: #FFD700;
+    }
 }
 
 .btn-sold:active {
-    transform: scale(0.95);
+    background: #FFA500;
+    color: #000;
+    border-color: #FFA500;
 }
 
 /* GLOBAL MOBILE FIXES */
