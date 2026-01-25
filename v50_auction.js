@@ -193,8 +193,8 @@ async function hostAuction() {
         currentRoomCode = code;
         currentRole = 'admin';
         getEl('admin-room-code').textContent = code;
-
-        // REVEAL ROOM CODE IMMEDIATELY (Restored)
+        
+        // REVEAL ROOM CODE IMMEDIATELY
         const codeHeader = getEl('admin-room-codes-header');
         if(codeHeader) codeHeader.classList.remove('hidden');
 
@@ -212,7 +212,7 @@ async function joinAuction() {
     if(!codeInput) return alert("Internal Error: Input missing");
     
     const code = codeInput.value.trim().toUpperCase();
-    if (!code) return alert("Enter a room code.");
+    if (!code) return showModal("Please enter a room code.", "Input Error");
 
     const user = auth.currentUser;
     if (!user) {
@@ -234,9 +234,13 @@ async function joinAuction() {
         
         // Initialize Game Params from DB if exists, else defaults
         if (roomData.config) {
-            totalPurse = roomData.config.purse || 50;
+            console.log(`[DEBUG] Room Config Found:`, roomData.config); // DEBUG
+            totalPurse = parseInt(roomData.config.purse) || 50; // Ensure int
+            console.log(`[DEBUG] Set totalPurse to: ${totalPurse}`);
             maxSquad = roomData.config.maxSquad || 6;
             minSquad = roomData.config.minSquad || 5;
+        } else {
+             console.log(`[DEBUG] No Room Config. Using Defaults. purse=${totalPurse}`);
         }
 
         const roomUserRef = ref(db, `rooms/${code}/users/${user.uid}`);
@@ -265,7 +269,7 @@ async function joinAuction() {
             role: 'user'
         }));
     } else {
-        alert("Room not found.");
+        showModal("Room not found. Please check the code.", "Join Error");
     }
 }
 
@@ -349,6 +353,7 @@ async function setupPlayers() {
 
     // Game Config Inputs
     const purseVal = parseInt(getEl('input-purse').value) || 50;
+    console.log(`[DEBUG] setupPlayers Purse Input: ${getEl('input-purse').value}, Parsed: ${purseVal}`); // DEBUG LOG
     const maxVal = parseInt(getEl('input-max-squad').value) || 6;
     const minVal = parseInt(getEl('input-min-squad').value) || 5;
     const managersVal = parseInt(getEl('input-managers').value) || 4;
@@ -445,7 +450,9 @@ async function sellPlayer() {
 
     try {
         await runTransaction(roomRef, (roomData) => {
-            if (!roomData) return; // Should not happen if room exists
+            // CRITICAL FIX: If roomData is null (not cached), return it to trigger server retry.
+            // Returning undefined aborts the transaction!
+            if (roomData === null) return roomData; 
             
             const currentP = roomData.current_player;
             if (!currentP || !currentP.highestBidderUID) {
@@ -499,89 +506,82 @@ async function sellPlayer() {
 // --- USER LOGIC (POINTS SYSTEM) ---
 
 async function placeBid(increment) {
+    const user = auth.currentUser;
+    if (!user) { log("Bid failed: No user"); return; }
+    if(!currentRoomCode) { log("Bid failed: No Room Code"); return; }
+
+    const roomRef = ref(db, `rooms/${currentRoomCode}`);
+
     try {
-        const user = auth.currentUser;
-        if (!user) { log("Bid failed: No user"); return; }
-    
-        if(!currentRoomCode) { log("Bid failed: No Room Code"); return; }
-    
-        log(`Placing bid: +${increment} for ${user.displayName || user.email || user.uid}`);
-    
-        const roomRef = ref(db, `rooms/${currentRoomCode}`);
-        const snapshot = await get(roomRef);
-        const data = snapshot.val();
-    
-        if (!data || !data.current_player) { log("Bid failed: No active player"); return showModal("No player active."); }
-        
-        // Sync config just in case
-        if (data.config) {
-            maxSquad = data.config.maxSquad;
-            minSquad = data.config.minSquad;
-        }
-    
-        const currentP = data.current_player;
-        
-        let nextBid;
-        if (currentP.highestBidderUID === null) {
-            // First bid. 
-            nextBid = increment; 
-            // Ensure at least base price? Base is 1. increment is 1 or 2.
-            if (nextBid < currentP.basePrice) nextBid = currentP.basePrice;
-        } else {
-            nextBid = currentP.currentBid + increment;
-        }
-    
-        log(`Bid Calc: Current=${currentP.currentBid}, Inc=${increment}, Next=${nextBid}`);
-    
-        // Check balance & Constraints
-        const userRef = child(roomRef, `users/${user.uid}`);
-        const userSnap = await get(userRef);
-        const userData = userSnap.val();
-    
-        if(!userData) {
-            log("Bid Critical Error: User Data not found in DB!");
-            return showModal("User data missing.");
-        }
-    
-        if (currentP.highestBidderUID === user.uid) {
-            return showModal("You are already the highest bidder.");
-        }
-    
-        const currentBalance = userData.balance;
-        const currentTeamSize = userData.team ? userData.team.length : 0;
-        
-        // 1. Max Squad Size Constraint (APPLIES TO HOST TOO)
-        if (currentTeamSize + 1 > maxSquad) {
-             return showModal(`Squad Full! Max ${maxSquad} players.`, "Squad Limit Reached");
-        }
-    
-        // 2. Purse Preservation Constraint
-        const remainingPurseInitial = currentBalance; 
-        const remainingPurseAfterBid = remainingPurseInitial - nextBid;
-        
-        const playersNeededForMin = Math.max(0, minSquad - (currentTeamSize + 1));
-        const pointsNeededForMin = playersNeededForMin * 1; 
-        
-        if (remainingPurseAfterBid < pointsNeededForMin) {
-            return showModal(`Cannot Bid! Need ${pointsNeededForMin} pts to fill remaining ${playersNeededForMin} spots.`, "Budget Warning");
-        }
-    
-        if (remainingPurseAfterBid < 0) {
-            return showModal("Insufficient funds.", "Low Balance");
-        }
-    
-        // Update Bid
-        log("Bid Valid. Updating DB...");
-        await update(ref(db, `rooms/${currentRoomCode}/current_player`), {
-            currentBid: nextBid,
-            highestBidderUID: user.uid,
-            highestBidderName: userData.username
+        await runTransaction(roomRef, (roomData) => {
+            // 1. Data Integrity Check
+            if (roomData === null) return roomData; // Retry
+            
+            const currentP = roomData.current_player;
+            if (!currentP) return; // Abort if no active player
+
+            // 2. Determine Next Bid
+            let nextBid;
+            if (currentP.highestBidderUID === null) {
+                // First bid
+                nextBid = currentP.basePrice > 0 ? currentP.basePrice : increment;
+                 // If increment + 0 < basePrice? Logic:
+                 // If base 0, next is 1.
+                 // If base 100, next is 100 (if we treat first bid as accepting base).
+                 // Let's stick to simple logic: Max(base, increment/current+inc)
+                 if (nextBid < currentP.basePrice) nextBid = currentP.basePrice;
+            } else {
+                nextBid = currentP.currentBid + increment;
+            }
+
+            // 3. User Validation (from Transaction Data)
+            const users = roomData.users || {};
+            const userData = users[user.uid];
+
+            if (!userData) return; // User missing in room?
+
+            // 4. Constraint: Already Highest
+            if (currentP.highestBidderUID === user.uid) {
+                // We cannot return an error message to the UI from inside the transaction easily
+                // We just abort the update.
+                // Or we can throw? throwing aborts and we catch it.
+                // let's just abort.
+                return; 
+            }
+
+            // 5. Constraints: Balance & Squad
+            const currentBalance = userData.balance || 0;
+            const currentTeamSize = userData.team ? userData.team.length : 0;
+            const roomConfig = roomData.config || {};
+            const rMaxSquad = roomConfig.maxSquad || 6;
+            const rMinSquad = roomConfig.minSquad || 5;
+
+            // Squad Full?
+            if (currentTeamSize + 1 > rMaxSquad) return; 
+
+            // Balance Check
+            const remaining = currentBalance - nextBid;
+            if (remaining < 0) return;
+
+            // Min Purse Preservation
+            const playersNeeded = Math.max(0, rMinSquad - (currentTeamSize + 1));
+            const pointsNeeded = playersNeeded * 1;
+            if (remaining < pointsNeeded) return;
+
+            // 6. APPLY UPDATE
+            roomData.current_player.currentBid = nextBid;
+            roomData.current_player.highestBidderUID = user.uid;
+            roomData.current_player.highestBidderName = userData.username;
+
+            return roomData;
         });
-        log("Bid Complete.");
+        
+        // Transaction Success
+        log(`Bid Transaction Complete`);
+
     } catch (e) {
-        log("PlaceBid Exception: " + e.message);
-        console.error(e);
-        showModal("Bid Error: " + e.message);
+        log("PlaceBid Transaction Failed: " + e.message);
+        // showModal("Bid Failed: " + e.message); // Transactions retry silent mostly
     }
 }
 
