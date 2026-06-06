@@ -1,5 +1,7 @@
 # Firebase Real-time Auction App
 
+![GitHub top language](https://img.shields.io/github/languages/top/Jalpan04/Auction) ![GitHub repo size](https://img.shields.io/github/repo-size/Jalpan04/Auction) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A modern, real-time auction web application powered by Google Firebase. It allows users to list items for auction, track live countdown timers, place real-time bids, and receive instant outbid updates. It also includes automated End-to-End (E2E) testing configurations using Microsoft Playwright.
 
 ## Features
